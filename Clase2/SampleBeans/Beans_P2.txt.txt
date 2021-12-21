@@ -1,0 +1,140 @@
+package edu.educacionit;
+
+import com.bolivarsoft.sensorclima.SensorClima;
+import com.bolivarsoft.sensorvelocidad.SensorVelocidad;
+import edu.educacionit.services.EvaluadorMultas;
+import edu.educacionit.services.GrabadorMultaJson;
+import edu.educacionit.services.SensorInEternum;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.Bean;
+import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Component
+class Servicio2 {
+    public void ejecutarTb() {
+        System.out.println("Hola desde servicio 2");
+    }
+}
+
+@Component
+class Servicio1 {
+
+    @Autowired
+    Servicio2 servicio2;
+
+    public void ejecutar() {
+        System.out.println("Hola desde servicio 1");
+        servicio2.ejecutarTb();
+    }
+}
+
+interface  CalculadorCuotas {
+    List<Integer> calcular();
+}
+
+class PresentacionPdf {
+    private CalculadorCuotas calculadorCuotas;
+
+    public PresentacionPdf(CalculadorCuotas calculadorCuotas) {
+        this.calculadorCuotas = calculadorCuotas;
+    }
+
+    public void enviarPdf() {
+        System.out.println("Enviando pdf...");
+        for(Integer i : calculadorCuotas.calcular()) {
+            System.out.println("Cuota: " + i);
+        }
+    }
+}
+
+class SistemaFrances implements CalculadorCuotas {
+
+    @Override
+    public List<Integer> calcular() {
+        ArrayList<Integer> enteros = new ArrayList<>();
+        enteros.add(2000);
+        enteros.add(2000);
+        enteros.add(2000);
+        enteros.add(2000);
+        enteros.add(2000);
+        return enteros;
+    }
+}
+
+class SistemaAleman implements CalculadorCuotas {
+
+    @Override
+    public List<Integer> calcular() {
+        ArrayList<Integer> enteros = new ArrayList<>();
+        enteros.add(2000);
+        enteros.add(1800);
+        enteros.add(1600);
+        enteros.add(1400);
+        enteros.add(1200);
+        return enteros;
+    }
+}
+
+
+@Component
+public class Init implements CommandLineRunner {
+
+
+    private static SensorInEternum factory(){
+        return new SensorInEternum(
+                new SensorClima(),
+                new SensorVelocidad(),
+                new EvaluadorMultas(
+                        new GrabadorMultaJson()
+                )
+        );
+    }
+
+
+    @Autowired
+    ApplicationContext applicationContext;
+
+    @Autowired
+    Servicio1 servicio1;
+
+    @Bean("PDF_Frances")
+    PresentacionPdf generacionPresentacionFrances() {
+        return new PresentacionPdf(new SistemaFrances());
+    }
+
+    @Bean("PDF_Aleman")
+    PresentacionPdf generacionPresentacionAleman() {
+        return new PresentacionPdf(new SistemaAleman());
+    }
+
+    @Override
+    public void run(String... args) throws Exception {
+       // factory().sensar();
+       // servicio1.ejecutar();
+
+        PresentacionPdf presentacionPdf = null;
+
+        if (args.length == 0) {
+            throw new Exception("Debe ingresar un sistema de amortizacion");
+        }
+
+        if(args[0].equals("frances")) {
+            presentacionPdf = applicationContext.getBean("PDF_Frances",
+                    PresentacionPdf.class);
+        }
+
+        if(args[0].equals("aleman")) {
+            presentacionPdf = applicationContext.getBean("PDF_Aleman",
+                    PresentacionPdf.class);
+        }
+
+        if(presentacionPdf != null) {
+            presentacionPdf.enviarPdf();
+        }
+    }
+}
